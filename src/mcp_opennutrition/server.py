@@ -1,15 +1,18 @@
 """MCP OpenNutrition Server - Model Context Protocol server for food data."""
 
+import argparse
 import asyncio
 import json
 import sys
-from typing import Any
+from typing import Any, Literal
 
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
 from mcp.types import TextContent, Tool
 
 from .db_adapter import SQLiteDBAdapter
+
+TransportType = Literal["stdio", "streamable-http"]
 
 
 class OpenNutritionServer:
@@ -207,8 +210,8 @@ class OpenNutritionServer:
             else:
                 raise ValueError(f"Unknown tool: {name}")
 
-    async def run(self):
-        """Run the MCP server."""
+    async def run_stdio(self):
+        """Run the MCP server with stdio transport."""
         async with stdio_server() as (read_stream, write_stream):
             await self.server.run(
                 read_stream,
@@ -216,15 +219,103 @@ class OpenNutritionServer:
                 self.server.create_initialization_options()
             )
 
+    async def run_http(self, host: str = "127.0.0.1", port: int = 8000):
+        """Run the MCP server with streamable HTTP transport.
+
+        Args:
+            host: Host address to bind to
+            port: Port to listen on
+        """
+        from mcp.server.streamable_http import StreamableHTTPServerTransport
+        from starlette.applications import Starlette
+        from starlette.routing import Route
+        from starlette.responses import Response
+
+        # Create HTTP transport
+        transport = StreamableHTTPServerTransport("/mcp/v1")
+
+        # Create Starlette routes
+        async def handle_sse(request):
+            async with transport.connect_sse(
+                request.scope, request.receive, request._send
+            ) as streams:
+                await self.server.run(
+                    streams[0], streams[1], self.server.create_initialization_options()
+                )
+            return Response()
+
+        async def handle_messages(request):
+            async with transport.connect_messages(
+                request.scope, request.receive, request._send
+            ) as streams:
+                await self.server.run(
+                    streams[0], streams[1], self.server.create_initialization_options()
+                )
+            return Response()
+
+        app = Starlette(
+            routes=[
+                Route("/mcp/v1/sse", endpoint=handle_sse),
+                Route("/mcp/v1/messages", endpoint=handle_messages, methods=["POST"]),
+            ]
+        )
+
+        import uvicorn
+        config = uvicorn.Config(app, host=host, port=port, log_level="info")
+        server = uvicorn.Server(config)
+        await server.serve()
+
+    async def run(self, transport: TransportType = "streamable-http", host: str = "127.0.0.1", port: int = 8000):
+        """Run the MCP server with specified transport.
+
+        Args:
+            transport: Transport type ("stdio" or "streamable-http")
+            host: Host address for HTTP transport
+            port: Port for HTTP transport
+        """
+        if transport == "stdio":
+            await self.run_stdio()
+        elif transport == "streamable-http":
+            await self.run_http(host, port)
+        else:
+            raise ValueError(f"Unknown transport: {transport}")
+
 
 async def main():
     """Main entry point for the server."""
+    parser = argparse.ArgumentParser(
+        description="MCP OpenNutrition Server - Food database via Model Context Protocol"
+    )
+    parser.add_argument(
+        "--transport",
+        type=str,
+        choices=["stdio", "streamable-http"],
+        default="streamable-http",
+        help="Transport protocol to use (default: streamable-http)"
+    )
+    parser.add_argument(
+        "--host",
+        type=str,
+        default="127.0.0.1",
+        help="Host address for HTTP transport (default: 127.0.0.1)"
+    )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=8000,
+        help="Port for HTTP transport (default: 8000)"
+    )
+
+    args = parser.parse_args()
+
     server = OpenNutritionServer()
 
-    # Log to stderr so it doesn't interfere with stdio communication
-    print("MCP OpenNutrition Server running on stdio", file=sys.stderr)
+    if args.transport == "stdio":
+        print("MCP OpenNutrition Server running on stdio", file=sys.stderr)
+    else:
+        print(f"MCP OpenNutrition Server running on http://{args.host}:{args.port}", file=sys.stderr)
 
-    await server.run()
+    await server.run(transport=args.transport, host=args.host, port=args.port)
 
 
 if __name__ == "__main__":

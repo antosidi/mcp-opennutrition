@@ -1,2 +1,4 @@
 # Core dependencies for MCP OpenNutrition
 mcp>=1.0.0
+uvicorn>=0.31.1
+starlette>=0.27.0

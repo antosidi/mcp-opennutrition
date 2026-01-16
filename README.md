@@ -9,8 +9,6 @@ A Model Context Protocol (MCP) server providing access to the comprehensive Open
 - 🆔 **Get by ID**: Retrieve detailed nutritional information using food IDs
 - 📱 **Barcode Lookup**: Find foods using EAN-13 barcodes
 - 🗄️ **Local Database**: Runs fully locally with no external API calls
-- ⚡ **Fast**: SQLite-based with optimized queries
-- 🐍 **Pure Python**: No Node.js or JavaScript dependencies
 
 ## Installation
 

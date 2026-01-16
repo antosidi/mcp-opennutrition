@@ -155,11 +155,11 @@ def main():
         # Create database
         create_database(tsv_file, db_path)
 
-        print(f"\n✓ Successfully created database: {db_path}")
-        print(f"✓ Database size: {db_path.stat().st_size / 1024 / 1024:.2f} MB")
+        print(f"\n\033[0;92m✓ Successfully created database: {db_path}\033[0m")
+        print(f"\033[0;92m✓ Database size: {db_path.stat().st_size / 1024 / 1024:.2f} MB\033[0m")
 
     except Exception as e:
-        print(f"\n✗ Error: {e}")
+        print(f"\n\033[0;91m✗ Error: {e}\033[0m")
         raise
 
     finally:
@@ -167,7 +167,7 @@ def main():
         if temp_dir.exists():
             import shutil
             shutil.rmtree(temp_dir)
-            print(f"✓ Cleaned up temporary files")
+            print(f"\033[0;92m✓ Cleaned up temporary files\033[0m")
 
 
 if __name__ == "__main__":

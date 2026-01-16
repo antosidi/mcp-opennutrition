@@ -1,0 +1,2 @@
+# Core dependencies for MCP OpenNutrition
+mcp>=1.0.0

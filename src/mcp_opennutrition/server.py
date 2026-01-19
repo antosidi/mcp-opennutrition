@@ -46,8 +46,23 @@ def search_food_by_name(
 ) -> List[Dict[str, Any]]:
     """Search for foods by name, synonym, or partial name.
 
-    Supports fuzzy matching and pagination. Use this tool when searching
-    for foods by common, brand, or alternate names.
+    Use this tool ANY time you need to search for foods by name,
+    synonym, or partial name. If a user provides a food name (common, brand,
+    or alternate) or requests foods by name, you MUST use this tool.
+
+    Use cases:
+    - Users asking for foods by common, brand, or alternate names
+    - Finding foods with partial or fuzzy name matches
+    - Suggesting food options based on user input
+
+    Examples:
+    - "Find all foods called 'almond milk'"
+    - "Show me foods named 'Quaker Oats'"
+
+    Pagination: If you cannot find the desired food in the first page of
+    results, you MUST use pagination (by incrementing the page number) to
+    retrieve more results until you find the item or exhaust the available
+    data. Results are returned in order of relevance.
     """
     results = db.search_by_name(query, page, page_size)
     return results
@@ -62,7 +77,22 @@ def get_foods(
 # ) -> List[FoodItem]:
     """Get a paginated list of all available foods.
 
-    Use this tool when browsing foods or requesting an overview.
+    Use this tool ANY time a user requests an overview, wants to
+    browse foods, or asks for a list of foods (by type, category, or general
+    request).
+
+    Use cases:
+    - Displaying lists for selection or browsing
+    - Providing overviews of available foods
+    - Supporting queries like "List all vegan foods" or "Show me foods"
+
+    Examples:
+    - "Show me all breakfast cereals"
+    - "List all gluten-free foods"
+
+    Pagination: If you cannot find the desired food in the first page of
+    results, you MUST use pagination (by incrementing the page number) to
+    retrieve more results until you find the item or exhaust the available data.
     """
     results = db.get_all(page, page_size)
     return results
@@ -76,8 +106,19 @@ def get_food_by_id(
 ) -> Dict[str, Any]:
     """Get detailed information for a specific food by its ID.
 
-    Use this tool when you have a food ID and need complete nutritional data.
-    Returns None if the food is not found.
+    Use this tool ANY time a user provides a food ID (e.g., fd_xxx),
+    or when you have a food ID from a previous step and need detailed
+    information.
+
+    Use cases:
+    - The user provides a food ID
+    - A previous step yielded a food ID
+    - The user requests nutrition, ingredients, or labeling for a specific product
+
+    Example:
+    - "Get details for fd_98765"
+
+    Returns an empty object if the food is not found.
     """
     if not id.startswith("fd_"):
         raise ValueError("Food ID must start with 'fd_'")
@@ -98,17 +139,24 @@ def get_food_by_ean13(
 ) -> Dict[str, Any]:
     """Look up food by EAN-13 barcode.
 
-    Use this tool when identifying foods from barcodes.
-    Returns None if the food is not found.
+    Use this tool ANY time a user provides a 13-digit EAN-13
+    barcode, or when the request involves identifying food from a barcode.
+
+    Use cases:
+    - The user provides a 13-digit barcode
+    - The request involves scanning or entering a barcode
+    - Identifying foods from packaging or retail context
+
+    Examples:
+    - "What food has barcode 4006381333931?"
+    - "Scan this barcode to get nutrition info"
+
+    Returns an empty object if the food is not found.
     """
     if len(ean_13) != 13:
         raise ValueError("EAN-13 must be exactly 13 characters long")
 
     result = db.get_by_ean13(ean_13)
-    
-    if not result:
-        print(f"\033[33mget_food_by_ean13: ean_13='{ean_13}' -> not found\033[0m")
-        
     return result if result else {}
     # return FoodItem.model_validate(result) if result else None
 

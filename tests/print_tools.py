@@ -34,6 +34,7 @@ async def main():
                     "name": tool.name,
                     "description": tool.description,
                     "parameters": tool.inputSchema,
+                    "output_schema": tool.outputSchema,
                 },
             }
             for tool in tools_result.tools

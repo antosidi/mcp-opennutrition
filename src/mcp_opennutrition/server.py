@@ -1,9 +1,11 @@
 """MCP OpenNutrition Server - FastMCP implementation."""
 
 import argparse
-from typing import List, Dict, Any, Annotated
+from typing import List, Dict, Any, Optional, Annotated
+from pydantic import Field
 from mcp.server.fastmcp import FastMCP
 from .db_adapter import SQLiteDBAdapter
+from .models import FoodItem
 
 # Create the FastMCP server
 mcp = FastMCP(
@@ -36,52 +38,46 @@ db = SQLiteDBAdapter()
 
 
 @mcp.tool(name="search-food-by-name", structured_output=True)
-def search_food_by_name(query: str, page: int = 1, page_size: int = 5) -> List[Dict[str, Any]]:
+def search_food_by_name(
+    query: Annotated[str, Field(description="Search query for food name")],
+    page: Annotated[int, Field(description="Page number (1-indexed)")] = 1,
+    page_size: Annotated[int, Field(description="Number of results per page")] = 1
+# ) -> List[FoodItem]:
+) -> List[Dict[str, Any]]:
     """Search for foods by name, synonym, or partial name.
 
     Supports fuzzy matching and pagination. Use this tool when searching
     for foods by common, brand, or alternate names.
-
-    Args:
-        query: Search query for food name
-        page: Page number (1-indexed), defaults to 1
-        page_size: Number of results per page, defaults to 5
-
-    Returns:
-        List of food items matching the query
     """
-    return db.search_by_name(query, page, page_size)
+    results = db.search_by_name(query, page, page_size)
+    return results
+    # return [FoodItem.model_validate(r) for r in results]
 
 
 @mcp.tool(name="get-foods", structured_output=True)
 def get_foods(
-    page: Annotated[int, "Page number (1-indexed), defaults to 1"] = 1,
-    page_size: Annotated[int, "Number of results per page, defaults to 1"] = 1
+    page: Annotated[int, Field(description="Page number (1-indexed)")] = 1,
+    page_size: Annotated[int, Field(description="Number of results per page")] = 1
 ) -> List[Dict[str, Any]]:
+# ) -> List[FoodItem]:
     """Get a paginated list of all available foods.
 
     Use this tool when browsing foods or requesting an overview.
-
-    Returns:
-        List of food items
     """
-    return db.get_all(page, page_size)
+    results = db.get_all(page, page_size)
+    return results
+    # return [FoodItem.model_validate(r) for r in results]
 
 
 @mcp.tool(name="get-food-by-id", structured_output=True)
-def get_food_by_id(id: str) -> Dict[str, Any]:
+def get_food_by_id(
+    id: Annotated[str, Field(description="Food ID (must start with 'fd_')")]
+# ) -> Optional[FoodItem]:
+) -> Dict[str, Any]:
     """Get detailed information for a specific food by its ID.
 
     Use this tool when you have a food ID and need complete nutritional data.
-
-    Args:
-        id: Food ID (must start with 'fd_')
-
-    Returns:
-        Food item details or None if not found
-
-    Raises:
-        ValueError: If ID doesn't start with 'fd_'
+    Returns None if the food is not found.
     """
     if not id.startswith("fd_"):
         raise ValueError("Food ID must start with 'fd_'")
@@ -92,22 +88,18 @@ def get_food_by_id(id: str) -> Dict[str, Any]:
         print(f"\033[33mget_food_by_id: id='{id}' -> not found\033[0m")
     
     return result if result else {}
+    # return FoodItem.model_validate(result) if result else None
 
 
 @mcp.tool(name="get-food-by-ean13", structured_output=True)
-def get_food_by_ean13(ean_13: str) -> Dict[str, Any]:
+def get_food_by_ean13(
+    ean_13: Annotated[str, Field(description="EAN-13 barcode (exactly 13 characters)")]
+# ) -> Optional[FoodItem]:
+) -> Dict[str, Any]:
     """Look up food by EAN-13 barcode.
 
     Use this tool when identifying foods from barcodes.
-
-    Args:
-        ean_13: EAN-13 barcode (exactly 13 characters)
-
-    Returns:
-        Food item details or None if not found
-
-    Raises:
-        ValueError: If barcode is not exactly 13 characters
+    Returns None if the food is not found.
     """
     if len(ean_13) != 13:
         raise ValueError("EAN-13 must be exactly 13 characters long")
@@ -118,6 +110,7 @@ def get_food_by_ean13(ean_13: str) -> Dict[str, Any]:
         print(f"\033[33mget_food_by_ean13: ean_13='{ean_13}' -> not found\033[0m")
         
     return result if result else {}
+    # return FoodItem.model_validate(result) if result else None
 
 
 def main():
